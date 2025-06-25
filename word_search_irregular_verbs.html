@@ -1,0 +1,465 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Word Search - Irregular Verbs</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  header {
+    background: #222;
+    padding: 15px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    user-select: none;
+  }
+  main {
+    flex: 1;
+    display: flex;
+    padding: 20px;
+    gap: 20px;
+  }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(15, 35px);
+    grid-template-rows: repeat(15, 35px);
+    gap: 3px;
+    background: #222;
+    border-radius: 10px;
+    padding: 10px;
+    user-select: none;
+  }
+  .cell {
+    width: 35px;
+    height: 35px;
+    background: #333;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 18px;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.3s, color 0.3s;
+    color: #ddd;
+  }
+  .cell.selected {
+    background-color: #3399ff;
+    color: white;
+    box-shadow: 0 0 8px #66b3ff;
+  }
+  .cell.correct {
+    background-color: #28a745 !important;
+    color: white !important;
+    box-shadow: 0 0 12px #28a745;
+    cursor: default;
+  }
+  .cell.wrong {
+    background-color: #dc3545 !important;
+    color: white !important;
+    box-shadow: 0 0 12px #dc3545;
+  }
+  #wordList {
+    width: 260px;
+    background: #222;
+    border-radius: 10px;
+    padding: 15px;
+    font-size: 16px;
+    overflow-y: auto;
+    user-select: none;
+  }
+  #wordList h2 {
+    margin-top: 0;
+    text-align: center;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  #wordList ul {
+    list-style: none;
+    padding-left: 10px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  #wordList ul li {
+    margin-bottom: 8px;
+    color: #ccc;
+    cursor: default;
+  }
+  #wordList ul li.found {
+    text-decoration: line-through;
+    color: #28a745;
+    font-weight: bold;
+  }
+  #wordList ul li.found span.meaning {
+    color: #a9f58d;
+    font-weight: normal;
+    text-decoration: none;
+    margin-left: 6px;
+    font-size: 14px;
+    font-style: italic;
+  }
+  #controls {
+    text-align: center;
+    margin-top: 10px;
+  }
+  button {
+    background-color: #3399ff;
+    border: none;
+    padding: 10px 25px;
+    font-size: 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: white;
+    user-select: none;
+    transition: background-color 0.3s;
+  }
+  button:hover:not(:disabled) {
+    background-color: #2277dd;
+  }
+  button:disabled {
+    background-color: #666;
+    cursor: default;
+  }
+  footer {
+    background: #0077cc;
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    text-align: center;
+    padding: 15px 0;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+    user-select: none;
+    box-shadow: inset 0 0 10px rgba(255,255,255,0.3);
+  }
+  #currentWordDisplay {
+    margin-top: 10px;
+    font-size: 20px;
+    min-height: 26px;
+    user-select: none;
+    color: #3399ff;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<header>WORD SEARCH - IRREGULAR VERBS</header>
+
+<main>
+  <div id="board"></div>
+
+  <aside id="wordList">
+    <h2>Find These Verbs</h2>
+    <ul id="verbsListUL"></ul>
+    <div id="controls">
+      <button id="checkBtn" disabled>Check</button>
+      <div id="currentWordDisplay"></div>
+    </div>
+  </aside>
+</main>
+
+<footer>feito por hudson santos T: 3001</footer>
+
+<script>
+  const verbs = [
+    { verb: "BE", meaning: "ser/estar" },
+    { verb: "BEGIN", meaning: "começar" },
+    { verb: "BREAK", meaning: "quebrar" },
+    { verb: "BUY", meaning: "comprar" },
+    { verb: "COME", meaning: "vir" },
+    { verb: "COST", meaning: "custar" },
+    { verb: "CUT", meaning: "cortar" },
+    { verb: "DO", meaning: "fazer" },
+    { verb: "DRINK", meaning: "beber" },
+    { verb: "EAT", meaning: "comer" },
+    { verb: "FORGET", meaning: "esquecer" },
+    { verb: "FREEZE", meaning: "congelar" },
+    { verb: "GET", meaning: "obter" },
+    { verb: "GO", meaning: "ir" },
+    { verb: "HAVE", meaning: "ter" },
+    { verb: "HIT", meaning: "bater" },
+    { verb: "KNOW", meaning: "saber/conhecer" },
+    { verb: "LEAVE", meaning: "sair/deixar" },
+    { verb: "MAKE", meaning: "fazer" },
+  ];
+
+  const rows = 15;
+  const cols = 15;
+  const board = document.getElementById('board');
+  const verbsListUL = document.getElementById('verbsListUL');
+  const checkBtn = document.getElementById('checkBtn');
+  const currentWordDisplay = document.getElementById('currentWordDisplay');
+
+  const cells = [];
+  let selectedCells = [];
+  let boardMatrix = [];
+
+  const directions = [
+    {x:1, y:0},
+    {x:-1, y:0},
+    {x:0, y:1},
+    {x:0, y:-1},
+    {x:1, y:1},
+    {x:-1, y:-1},
+    {x:1, y:-1},
+    {x:-1, y:1}
+  ];
+
+  function fillEmptyWithRandomLetters() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for(let r=0; r<rows; r++) {
+      for(let c=0; c<cols; c++) {
+        if(!boardMatrix[r][c]) {
+          boardMatrix[r][c] = letters.charAt(Math.floor(Math.random()*letters.length));
+        }
+      }
+    }
+  }
+
+  function tryPlaceWord(word, startRow, startCol, dir) {
+    const len = word.length;
+    const endRow = startRow + dir.y*(len-1);
+    const endCol = startCol + dir.x*(len-1);
+    if(endRow < 0 || endRow >= rows || endCol < 0 || endCol >= cols) return false;
+
+    for(let i=0; i<len; i++) {
+      const r = startRow + dir.y*i;
+      const c = startCol + dir.x*i;
+      const currentLetter = boardMatrix[r][c];
+      if(currentLetter && currentLetter !== word[i]) {
+        return false;
+      }
+    }
+
+    for(let i=0; i<len; i++) {
+      const r = startRow + dir.y*i;
+      const c = startCol + dir.x*i;
+      boardMatrix[r][c] = word[i];
+    }
+    return true;
+  }
+
+  function placeAllWords() {
+    boardMatrix = Array(rows).fill(null).map(() => Array(cols).fill(null));
+
+    verbs.forEach(({ verb }) => {
+      const word = verb.toUpperCase();
+      let placed = false;
+      let attempts = 0;
+
+      while(!placed && attempts < 100) {
+        const dir = directions[Math.floor(Math.random() * directions.length)];
+        const startRow = Math.floor(Math.random() * rows);
+        const startCol = Math.floor(Math.random() * cols);
+        placed = tryPlaceWord(word, startRow, startCol, dir);
+        attempts++;
+      }
+      if(!placed) {
+        console.warn(`Não foi possível posicionar a palavra: ${word}`);
+      }
+    });
+
+    fillEmptyWithRandomLetters();
+  }
+
+  function createBoard() {
+    board.innerHTML = '';
+    cells.length = 0;
+    for(let r=0; r<rows; r++) {
+      for(let c=0; c<cols; c++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.textContent = boardMatrix[r][c];
+        cell.dataset.index = r*cols + c;
+        board.appendChild(cell);
+        cells.push(cell);
+      }
+    }
+  }
+
+  function areAdjacent(idx1, idx2) {
+    if(idx2 === null) return true;
+    const r1 = Math.floor(idx1 / cols);
+    const c1 = idx1 % cols;
+    const r2 = Math.floor(idx2 / cols);
+    const c2 = idx2 % cols;
+    return Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1;
+  }
+
+  function updateCurrentWord() {
+    const word = selectedCells.map(c => c.textContent).join('');
+    currentWordDisplay.textContent = word;
+    checkBtn.disabled = word.length === 0;
+  }
+
+  function clearSelection() {
+    selectedCells.forEach(c => c.classList.remove('selected'));
+    selectedCells = [];
+    updateCurrentWord();
+  }
+
+  function markWordCorrect() {
+    selectedCells.forEach(c => {
+      c.classList.add('correct');
+      c.classList.remove('selected');
+      c.style.cursor = 'default';
+      c.removeEventListener('mousedown', onCellMouseDown);
+      c.removeEventListener('mouseover', onCellMouseOver);
+      c.removeEventListener('mouseup', onCellMouseUp);
+      c.removeEventListener('click', onCellClick);
+    });
+  }
+
+  function markWordWrong() {
+    selectedCells.forEach(c => c.classList.add('wrong'));
+    setTimeout(() => {
+      selectedCells.forEach(c => c.classList.remove('wrong'));
+      clearSelection();
+    }, 1000);
+  }
+
+  function checkCurrentWord() {
+    const word = selectedCells.map(c => c.textContent).join('');
+    const wordUpper = word.toUpperCase();
+    const reversedWord = wordUpper.split('').reverse().join('');
+
+    const found = verbs.find(v => v.verb === wordUpper || v.verb === reversedWord);
+
+    if(found) {
+      const li = document.getElementById('verb-' + found.verb);
+      if(li.classList.contains('found')) {
+        alert(`Você já encontrou a palavra "${found.verb}"!`);
+        clearSelection();
+        return;
+      }
+      li.classList.add('found');
+      if(!li.querySelector('span.meaning')) {
+        const span = document.createElement('span');
+        span.classList.add('meaning');
+        span.textContent = `— ${found.meaning}`;
+        li.appendChild(span);
+      }
+      markWordCorrect();
+      clearSelection();
+      alert(`Parabéns! Você encontrou a palavra "${found.verb}" que significa "${found.meaning}"`);
+    } else {
+      markWordWrong();
+    }
+  }
+
+  function selectCell(cell) {
+    cell.classList.add('selected');
+    selectedCells.push(cell);
+    updateCurrentWord();
+  }
+
+  function onCellClick(e) {
+    if(e.target.classList.contains('correct')) return;
+
+    if(selectedCells.includes(e.target)) {
+      e.target.classList.remove('selected');
+      selectedCells = selectedCells.filter(c => c !== e.target);
+      updateCurrentWord();
+    } else {
+      if(selectedCells.length === 0) {
+        selectCell(e.target);
+      } else {
+        const lastIdx = parseInt(selectedCells[selectedCells.length-1].dataset.index);
+        const curIdx = parseInt(e.target.dataset.index);
+        if(areAdjacent(curIdx, lastIdx)) {
+          selectCell(e.target);
+        }
+      }
+    }
+  }
+
+  let isSelecting = false;
+
+  function onCellMouseDown(e) {
+    if(e.target.classList.contains('correct')) return;
+    isSelecting = true;
+    clearSelection();
+    selectCell(e.target);
+  }
+  function onCellMouseOver(e) {
+    if(!isSelecting) return;
+    if(e.target.classList.contains('correct')) return;
+    if(!selectedCells.includes(e.target)) {
+      const lastIdx = selectedCells.length > 0 ? parseInt(selectedCells[selectedCells.length -1].dataset.index) : null;
+      const curIdx = parseInt(e.target.dataset.index);
+      if(selectedCells.length === 0 || areAdjacent(curIdx, lastIdx)) {
+        selectCell(e.target);
+      }
+    }
+  }
+  function onCellMouseUp(e) {
+    if(isSelecting) {
+      isSelecting = false;
+      updateCurrentWord();
+    }
+  }
+
+  function addCellEventListeners() {
+    cells.forEach(cell => {
+      cell.addEventListener('mousedown', onCellMouseDown);
+      cell.addEventListener('mouseover', onCellMouseOver);
+      cell.addEventListener('mouseup', onCellMouseUp);
+      cell.addEventListener('click', onCellClick);
+
+      cell.addEventListener('touchstart', e => {
+        e.preventDefault();
+        onCellMouseDown(e);
+      }, { passive: false });
+      cell.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        if(el && el.classList.contains('cell')) {
+          onCellMouseOver({ target: el });
+        }
+      }, { passive: false });
+      cell.addEventListener('touchend', e => {
+        e.preventDefault();
+        onCellMouseUp(e);
+      }, { passive: false });
+    });
+  }
+
+  function populateVerbList() {
+    verbsListUL.innerHTML = '';
+    verbs.forEach(({ verb }) => {
+      const li = document.createElement('li');
+      li.textContent = verb;
+      li.id = 'verb-' + verb;
+      verbsListUL.appendChild(li);
+    });
+  }
+
+  function init() {
+    placeAllWords();
+    createBoard();
+    addCellEventListeners();
+    populateVerbList();
+    updateCurrentWord();
+  }
+
+  init();
+</script>
+
+</body>
+</html>
